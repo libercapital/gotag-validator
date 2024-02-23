@@ -1,4 +1,4 @@
-module github.com/libercapital/gotag-validator.git/v2
+module github.com/libercapital/gotag-validator/v2
 
 go 1.21
 

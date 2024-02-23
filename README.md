@@ -5,7 +5,7 @@
 ## Install
 
 ```bash
-	go get github.com/libercapital/gotag-validator.git/v2
+	go get github.com/libercapital/gotag-validator/v2
 ```
 
 ## How to use
@@ -18,7 +18,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
-	gotag_validator "github.com/libercapital/gotag-validator.git/v2"
+	gotag_validator "github.com/libercapital/gotag-validator/v2"
 	"schneider.vip/problem"
 )
 

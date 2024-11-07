@@ -27,6 +27,10 @@ var invalidCPF = problem.New(problem.Status(400)).Append(problem.Custom("invalid
 	{"name": "cpf", "reason": "cpf" + documentMessage},
 }))
 
+var invalidEmail = problem.New(problem.Status(400)).Append(problem.Custom("invalid_params", []map[string]interface{}{
+	{"name": "email", "reason": "email" + emailMessage},
+}))
+
 var invalidDecimalValue = problem.New(problem.Status(400)).Append(problem.Custom("invalid_params", []map[string]interface{}{
 	{"name": "decimal", "reason": "decimal" + decimal2placesMessage},
 }))
@@ -65,6 +69,13 @@ func TestDoValidate(t *testing.T) {
 				CPF string `json:"cpf" validate:"document"`
 			}{{CPF: "12345432"}}},
 			want: invalidCPF,
+		},
+		{
+			name: "InvalidEmail",
+			args: args{body: []struct {
+				CPF string `json:"email" validate:"email"`
+			}{{CPF: "mickeymouselibercapital.com.br"}}},
+			want: invalidEmail,
 		},
 		{
 			name: "InvalidDecimalValue",

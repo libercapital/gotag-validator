@@ -25,22 +25,26 @@ const (
 	customPrefix               = "custom"
 	regexForValidDecimalValues = "^(\\d*\\.)?\\d{2}$"
 	regexForValidBrZipCode     = "^\\d{5}\\-{0,1}\\d{3}$"
+	emailRegexPattern          = `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
 
 	datetimeGteTag    = "strdatetimegte"
 	documentTag       = "document"
 	decimal2placesTag = "decimal2places"
 	brZipCodeTag      = "brzipcode"
 	iso8601dateTag    = "iso8601date"
+	emailTag          = "email"
 
 	mustBeGteMessage      = " must be greater than or equal "
 	decimal2placesMessage = " must be in a decimal value format as %.2f"
 	documentMessage       = " must be a valid cpf or cnpj"
 	zipCodeMessage        = " must be a valid br zip code"
 	isoMessage            = " must be a YYYY-MM-DD format date"
+	emailMessage          = " must be a valid email address"
 )
 
 var decimalValuesRegex = regexp.MustCompile(regexForValidDecimalValues)
 var regexBrZipCode = regexp.MustCompile(regexForValidBrZipCode)
+var emailRegex = regexp.MustCompile(emailRegexPattern)
 
 type IValidator interface {
 	Validate(body interface{}) error
@@ -85,6 +89,10 @@ func NewValidator(customValidations map[string]func(fl validator.FieldLevel) boo
 		return nil, err
 	}
 	if err := tagValidator.RegisterValidation(iso8601dateTag, validateISO8601Date); err != nil {
+		return nil, err
+	}
+
+	if err := tagValidator.RegisterValidation(emailTag, validateEmail); err != nil {
 		return nil, err
 	}
 
@@ -140,6 +148,10 @@ func validateDatetimeGTE(fl validator.FieldLevel) bool {
 	}
 
 	return true
+}
+
+func validateEmail(fl validator.FieldLevel) bool {
+	return emailRegex.MatchString(fl.Field().String())
 }
 
 func validDocument(fl validator.FieldLevel) bool {

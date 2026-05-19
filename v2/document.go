@@ -12,33 +12,40 @@ import (
 // Regexp pattern for CPF and CNPJ.
 var (
 	CPFRegexp  = regexp.MustCompile(`^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$`)
-	CNPJRegexp = regexp.MustCompile(`^\d{2}\.?\d{3}\.?\d{3}/?(:?\d{3}[1-9]|\d{2}[1-9]\d|\d[1-9]\d{2}|[1-9]\d{3})-?\d{2}$`)
+	CNPJRegexp = regexp.MustCompile(`(?i)^[A-Z0-9]{2}\.?[A-Z0-9]{3}\.?[A-Z0-9]{3}/?[A-Z0-9]{4}-?\d{2}$`)
 )
 
 // IsCPF verifies if the given string is a valid CPF document.
 func isCPF(doc string) bool {
 
-	const (
-		size = 9
-		pos  = 10
-	)
+	const size = 9
 
-	return isCPFOrCNPJ(doc, CPFRegexp, size, pos)
+	return isCPFOrCNPJ(doc, CPFRegexp, size)
 }
 
 // IsCNPJ verifies if the given string is a valid CNPJ document.
 func isCNPJ(doc string) bool {
 
-	const (
-		size = 12
-		pos  = 5
-	)
+	const size = 12
 
-	return isCPFOrCNPJ(doc, CNPJRegexp, size, pos)
+	if !CNPJRegexp.MatchString(doc) {
+		return false
+	}
+
+	cleanSeparators(&doc)
+
+	if allEq(doc) {
+		return false
+	}
+
+	dig1 := calculateDigit(doc[:size], []int{5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2})
+	dig2 := calculateDigit(doc[:size+1], []int{6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2})
+
+	return dig1 == int(doc[size]-'0') && dig2 == int(doc[size+1]-'0')
 }
 
-// isCPFOrCNPJ generates the digits for a given CPF or CNPJ and compares it with the original digits.
-func isCPFOrCNPJ(doc string, pattern *regexp.Regexp, size int, position int) bool {
+// isCPFOrCNPJ generates the digits for a given CPF and compares it with the original digits.
+func isCPFOrCNPJ(doc string, pattern *regexp.Regexp, size int) bool {
 
 	if !pattern.MatchString(doc) {
 		return false
@@ -52,12 +59,12 @@ func isCPFOrCNPJ(doc string, pattern *regexp.Regexp, size int, position int) boo
 	}
 
 	d := doc[:size]
-	digit := calculateDigit(d, position)
+	digit := calculateDigit(d, []int{10, 9, 8, 7, 6, 5, 4, 3, 2})
 
-	d = d + digit
-	digit = calculateDigit(d, position+1)
+	d = d + strconv.Itoa(digit)
+	digit2 := calculateDigit(d, []int{11, 10, 9, 8, 7, 6, 5, 4, 3, 2})
 
-	return doc == d+digit
+	return doc == d+strconv.Itoa(digit2)
 }
 
 // cleanNonDigits removes every rune that is not a digit.
@@ -67,6 +74,20 @@ func cleanNonDigits(doc *string) {
 	for _, r := range *doc {
 		if unicode.IsDigit(r) {
 			buf.WriteRune(r)
+		}
+	}
+
+	*doc = buf.String()
+}
+
+// cleanSeparators removes formatting separators (., -, /) while preserving alphanumeric characters.
+// Used for CNPJ which may contain uppercase letters in the new alphanumeric format.
+func cleanSeparators(doc *string) {
+
+	buf := bytes.NewBufferString("")
+	for _, r := range *doc {
+		if r != '.' && r != '-' && r != '/' {
+			buf.WriteRune(unicode.ToUpper(r))
 		}
 	}
 
@@ -86,29 +107,24 @@ func allEq(doc string) bool {
 	return true
 }
 
-// calculateDigit calculates the next digit for the given document.
-func calculateDigit(doc string, position int) string {
+// calculateDigit calculates the next digit for the given document using explicit weights.
+func calculateDigit(doc string, weights []int) int {
 
-	var sum int
-	for _, r := range doc {
-
-		sum += toInt(r) * position
-		position--
-
-		if position < 2 {
-			position = 9
-		}
+	sum := 0
+	for i := 0; i < len(doc); i++ {
+		sum += charValue(doc[i]) * weights[i]
 	}
 
-	sum %= 11
-	if sum < 2 {
-		return "0"
+	rest := sum % 11
+	if rest < 2 {
+		return 0
 	}
-
-	return strconv.Itoa(11 - sum)
+	return 11 - rest
 }
 
-// toInt converts a rune to an int.
-func toInt(r rune) int {
-	return int(r - '0')
+// charValue converts a byte to its numeric value for check digit calculation.
+// Digits 0-9 map to values 0-9; uppercase letters A-Z map to 17-42 (ASCII value minus 48).
+// This follows the Receita Federal IN 2229/2024 specification for alphanumeric CNPJ.
+func charValue(c byte) int {
+	return int(c) - 48
 }
